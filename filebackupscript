@@ -1,0 +1,119 @@
+#!/bin/bash
+###################### Configuration ######################
+
+
+
+#### THIS IS NOT MY ORIGINAL SCRIPT, I HAVE JUST MADE MODIFICATIONS TO SIMPLIFY IT AND TO MAKE IT WORK FOR SEVERAL SITES ######
+
+#Store the backups in the following directory
+#Note: Always backup your data outside of your public_html or html directory. This will ensure your backup files won't be accessed publicly from a browser.
+#Example:
+#backupDirectory="backups/mybackupfiles"
+backupDirectory=“/backups/yoursite.com/"
+
+##### Files Configuration #####
+#$HOME should by default hold the path of your user home directory, in case it doesn't, or if you want to backup a specific directory, you can define it below:
+#HOME="/var/www"
+
+#Directory (and its subdirectories) to backup. By Default, the godaddy public directory is called "html" or "public_html"
+filesPath=‘public_html/wp-content’
+
+#Archive files as Zip(0) or Tar(1)
+ZipOrTar=1
+
+#Compress Files in Archive? (On=1, Off=0)
+#Note: Godaddy scripts are usually interrupted after a specific time. Compressing/deflating the files will take more time to complete. Use zero if you have a huge website and the script is always interrupted.
+compressFiles=0
+
+enableFtpTransfer=1
+
+#Delete local files after uploading them to FTP (Yes=1 / No=0). This will only work if enableFtpTransfer is set to 1
+deleteFilesAfterTransfer=0
+
+#FTP Host - Fill the FTP details below. This is only required if enableFtpTransfer is set to 1
+FtpHost='yoursite.com'
+
+#FTP Port
+FtpPort='22'
+
+#FTP User
+FtpUser='yourUser'
+
+#FTP Password
+FtpPass=''
+
+#FTP Path
+FtpPath='/public_html/wp-content/'
+
+################# End Of Configuration ###################
+
+
+################# Script Execution ###################
+
+###!!! Edit at your own risk !!!###
+
+#Store Current Date
+Date=`date '+%Y-%m-%d_%H-%M'`
+
+#Create Final Backup Directory
+thisBackupDirectory="$backupDirectory/$Date"
+
+#Check if backup directory exist, otherwise create it
+if [ ! -d "$HOME/$thisBackupDirectory" ]
+then
+    mkdir -p $HOME/$thisBackupDirectory/
+    echo "Directory Created"
+fi
+
+
+##### Backup Files #####
+cd $HOME/$filesPath
+
+#Zip
+if [ $ZipOrTar -eq 0 ]
+then
+    if [ $compressFiles -eq 0 ]
+    then
+        filesname="$HOME/$thisBackupDirectory/files_$Date.zip"
+        zip -r -0 $filesname * .[^.]*
+    else
+        filesname="$HOME/$thisBackupDirectory/files_$Date.zip"
+        zip -r -9 $filesname * .[^.]*
+    fi
+fi
+
+#Tar
+if [ $ZipOrTar -eq 1 ]
+then
+    if [ $compressFiles -eq 0 ]
+    then
+        filesname="$HOME/$thisBackupDirectory/files_$Date.tar"
+        tar -cvf $filesname .
+    else
+        filesname="$HOME/$thisBackupDirectory/files_$Date.tar.gz"
+        tar -zcvf $filesname .
+    fi
+fi
+##### END OF Backup Files #####
+
+######## FTP Transfer ########
+##### Transfer Files #####
+if [ $enableFtpTransfer -eq 1 ]
+then
+    if [ "$FtpPath" == "" ]
+    then
+        FtpPath="$Date"
+    else
+        FtpPath="$FtpPath/$Date"
+    fi
+#Upload File & Database(s)
+ftp -npv $FtpHost $FtpPort  << END
+user $FtpUser $FtpPass
+mkdir $FtpPath
+cd $FtpPath
+lcd $HOME/$thisBackupDirectory
+prompt off
+mput *
+bye
+END
+##### END OF Transfer Files #####
